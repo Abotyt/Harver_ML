@@ -82,3 +82,110 @@ y_hat_rf <- predict(fit_rf, x_test[ ,col_index])
 cm <- confusionMatrix(y_hat_rf, y_test)
 cm$overall["Accuracy"]
 
+#variable importance
+imp <- importance(fit_rf)
+imp
+
+mat <- rep(0, ncol(x))
+mat[col_index] <- imp
+image(matrix(mat, 28, 28))
+
+
+p_max <- predict(fit_rf, x_test[,col_index], type = "prob") 
+p_max <- p_max / rowSums(p_max)
+p_max <- apply(p_max, 1, max)
+
+ind  <- which(y_hat_rf != y_test)
+ind <- ind[order(p_max[ind], decreasing = TRUE)]
+
+rafalib::mypar(1,4)
+for(i in ind[1:4]){
+  image(matrix(x_test[i,], 28, 28)[, 28:1], 
+        main = paste0("Pr(",y_hat_rf[i],")=",round(p_max[i], 2),
+                      " but is a ",y_test[i]),
+        xaxt="n", yaxt="n")
+}
+
+#Ensemble
+p_rf <- predict(fit_rf, x_test[,col_index], type = "prob")
+class(p_rf)
+p_rf <- p_rf / rowSums(p_rf)
+p_knn <- predict(fit_knn, x_test[,col_index])
+p <- (p_rf + p_knn)/2
+y_pred <- factor(apply(p, 1, which.max)-1)
+y_pred
+confusionMatrix(y_pred, y_test)$overall["Accuracy"]
+
+#----------------------------------------
+
+#Q1
+models <- c("glm", "lda", "naive_bayes", "knn", "gamLoess", "qda", "rf")
+
+library(caret)
+library(dslabs)
+library(tidyverse)
+set.seed(1)
+data("mnist_27")
+
+fits <- lapply(models, function(model){ 
+  print(model)
+  train(y ~ ., method = model, data = mnist_27$train)
+}) 
+names(fits) <- models
+
+names(fits[1])
+#Q2
+y_hats <- sapply(fits, function(model){ 
+  predict(model, mnist_27$test) 
+}) 
+class(y_hats)
+dim(y_hats)
+
+#Q3
+
+acc <- colMeans(y_hats == mnist_27$test$y)
+acc
+class(acc)
+mean(acc)
+
+#Q4
+
+votes <- rowCounts(y_hats == "7")
+y_hat <- ifelse(votes > 3, "7", "2")
+accuracy_ensemble <- mean(y_hat == mnist_27$test$y)
+accuracy_ensemble
+
+#Q5
+for (idx in 1:length(acc)) {
+  if(acc[idx] > accuracy_ensemble) {print(acc[idx])}
+}
+
+#Q6
+
+train_acc <- sapply(models, function(model){ 
+  print(model)
+  fit<-train(y ~ ., method = model, data = mnist_27$train)
+  max(fit$results$Accuracy)
+}) 
+mean(train_acc)
+
+#acc_hat <- sapply(fits, function(fit) max(fit$results$Accuracy))
+#acc_hat
+#mean(acc_hat)
+
+
+#Q7
+
+selected_accuracy <- fits[fits>=0.8]
+selected_model <- names(selected_accuracy)
+dim(y_hats[,selected_model])
+votes <- rowMeans(y_hats[,selected_model] == "7")
+prediction <- ifelse(votes > 0.5, "7", "2")
+accuracy_ensemble <- mean(prediction == mnist_27$test$y)
+accuracy_ensemble
+
+#Alternative
+#ind <- train_acc >= 0.8
+#votes <- rowMeans(y_hats[,ind] == "7")
+#y_hat <- ifelse(votes>=0.5, 7, 2)
+#mean(y_hat == mnist_27$test$y)
