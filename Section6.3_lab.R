@@ -122,9 +122,54 @@ train_set %>% dplyr::count(movieId) %>%
 
 
 #Q1
-library(dslabs)
-test_set %>% 
-  left_join(movie_avgs, by='movieId') %>%
-  mutate(residual = rating - (mu + b_i)) %>%
-  arrange(desc(abs(residual))) %>% 
-  select(title,  residual) %>% slice(1:10) %>% pull(title) 
+#simulate a school dataset
+#num of student in each school
+set.seed(1986)
+n <- round(2^rnorm(1000, 8, 1))
+
+#true quality
+set.seed(1)
+mu <- round(80 + 2*rt(1000, 5))
+range(mu)
+schools <- data.frame(id = paste("PS",1:1000),
+                      size = n,
+                      quality = mu,
+                      rank = rank(-mu))
+
+#top ten
+schools %>% 
+  top_n(10, quality) %>% 
+  arrange(desc(quality))
+
+#simulate test result
+scores <- sapply(1:nrow(schools), function(i){
+  scores <- rnorm(schools$size[i], schools$quality[i], 30)
+  scores
+})
+schools <- schools %>% mutate(score = sapply(scores, mean))
+
+#Q1
+schools %>% 
+  top_n(10, score) %>% 
+  arrange(desc(score))
+
+#Q2
+schools %>%
+  summarise(median(size))
+
+schools %>% 
+  top_n(10, score) %>% 
+  arrange(desc(score)) %>%
+  summarise(median(size))
+
+#Q3
+schools %>% 
+  top_n(-10, score) %>% 
+  arrange(score) %>%
+  summarise(median(size))
+
+#Q4
+schools %>% 
+  ggplot(aes(x=size, y=score)) +
+  geom_point() +
+  gghighlight(top_n(10, rank))
