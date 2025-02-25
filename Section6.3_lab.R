@@ -169,7 +169,24 @@ schools %>%
   summarise(median(size))
 
 #Q4
-schools %>% 
-  ggplot(aes(x=size, y=score)) +
+top_10_rating <- schools %>%
+  top_n(10, quality)%>% 
+  arrange(desc(quality))
+
+ggplot(data=schools, aes(x=size, y=score)) +
   geom_point() +
-  gghighlight(top_n(10, rank))
+  geom_point(data=top_10_rating, aes(x=size, y=score), colour='red')
+
+#Q5
+overall <- mean(sapply(scores, mean))
+
+schools$score
+head(scores)
+b_i <- sum(scores-overall)/(schools$size+25)
+
+schools %>% 
+  arrange(desc(b_i)) %>%
+  dplyr::select(id, b_i, score, size) %>% 
+  slice(1:10) %>%
+  mutate(score+b_i)
+
