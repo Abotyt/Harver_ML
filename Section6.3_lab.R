@@ -148,27 +148,31 @@ scores <- sapply(1:nrow(schools), function(i){
 })
 schools <- schools %>% mutate(score = sapply(scores, mean))
 
-#Q1
+#Q1 
+#find top 10 according to score
 schools %>% 
   top_n(10, score) %>% 
   arrange(desc(score))
 
 #Q2
+#find median size overall 
 schools %>%
   summarise(median(size))
-
+#find median size of the top 10
 schools %>% 
   top_n(10, score) %>% 
   arrange(desc(score)) %>%
   summarise(median(size))
 
 #Q3
+#find median size of bottom 10
 schools %>% 
   top_n(-10, score) %>% 
   arrange(score) %>%
   summarise(median(size))
 
 #Q4
+#plot schools size vs avg score of schools, and highlight the top 10 
 top_10_rating <- schools %>%
   top_n(10, quality)%>% 
   arrange(desc(quality))
@@ -178,15 +182,107 @@ ggplot(data=schools, aes(x=size, y=score)) +
   geom_point(data=top_10_rating, aes(x=size, y=score), colour='red')
 
 #Q5
+#apply regularisation
+#find mu
 overall <- mean(sapply(scores, mean))
 
 schools$score
 head(scores)
-b_i <- sum(scores-overall)/(schools$size+25)
-
+#find difference between each score and mu
+y_mu <- sapply(scores, function(x) {x-overall})
+#find sum of all scores in each school
+sum_ymu <- sapply(y_mu, sum)
+#each school total score divided by each school size and + 25(arpha)
+b_i <- sum_ymu/(schools$size+25)
+# regularised b_i to find the top 10
 schools %>% 
-  arrange(desc(b_i)) %>%
-  dplyr::select(id, b_i, score, size) %>% 
-  slice(1:10) %>%
-  mutate(score+b_i)
+  mutate(b_i = b_i) %>%
+  top_n(10, b_i) %>%
+  arrange(desc(b_i))
+#predict with the regularised b_i
+top_10_rating <- schools %>% 
+  mutate(predict = overall+b_i) %>%
+  top_n(10, predict) %>%
+  arrange(desc(predict))
+
+
+#alternative
+#alpha <- 25
+#score_reg <- sapply(scores, function(x)  overall + sum(x-overall)/(length(x)+alpha))
+#schools %>% mutate(score_reg = score_reg) %>%
+#  top_n(10, score_reg) %>% arrange(desc(score_reg))
+
+#Q6
+#find the best alpha that minimise the RMSE
+alpha <- seq(10, 250)
+alpha
+score_reg <-  sapply(alpha, function(alpha){                 
+  sapply(scores, function(x) {
+    overall + sum(x-overall)/(length(x)+alpha)
+  })
+})
+
+RMSE <-  rep(NA, length(alpha))
+
+for(idx in seq(length(alpha))) {
+  RMSE[idx] <- sqrt(sum((schools$quality-score_reg[,idx])^2)/1000)
+
+}
+
+length(RMSE)
+length(alpha)
+
+plot(alpha, RMSE)
+
+alpha[which(RMSE==min(RMSE))]
+
+#Q7
+#use the alpha that we found to identify the top school and the regularised avg of the 10th school
+alpha <- alpha[which(RMSE==min(RMSE))]
+score_reg <- sapply(scores, function(x)  overall + sum(x-overall)/(length(x)+alpha))
+schools %>% mutate(score_reg = score_reg) %>%
+  top_n(10, score_reg) %>% arrange(desc(score_reg))
+
+#Q8
+alpha <- seq(10, 250)
+score_reg <-  sapply(alpha, function(alpha){                 
+  sapply(scores, function(x) {
+    sum(x)/(length(x)+alpha)
+  })
+})
+score_reg
+RMSE <-  rep(NA, length(alpha))
+
+for(idx in seq(length(alpha))) {
+  RMSE[idx] <- sqrt(sum((schools$quality-score_reg[,idx])^2)/1000)
+  
+#Matrix Factorization
+train_small <- movielens %>% 
+  group_by(movieId) %>%
+  filter(n() >= 50 | movieId == 3252) %>% ungroup() %>%
+  group_by(userId) %>%
+  filter(n() >= 50) %>% ungroup()
+
+y <- train_small %>% 
+  dplyr::select(userId, movieId, rating) %>%
+  pivot_wider(names_from = "movieId", values_from = "rating") %>%
+  as.matrix()
+
+rownames(y)<- y[,1]
+y <- y[,-1]
+
+movie_titles <- movielens %>% 
+  dplyr::select(movieId, title) %>%
+  distinct()
+
+colnames(y) <- with(movie_titles, title[match(colnames(y), movieId)]) 
+
+}
+
+length(RMSE)
+length(alpha)
+
+plot(alpha, RMSE)
+
+alpha[which(RMSE==min(RMSE))]
 
