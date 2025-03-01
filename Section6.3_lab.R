@@ -256,6 +256,15 @@ RMSE <-  rep(NA, length(alpha))
 for(idx in seq(length(alpha))) {
   RMSE[idx] <- sqrt(sum((schools$quality-score_reg[,idx])^2)/1000)
   
+}
+
+length(RMSE)
+length(alpha)
+
+plot(alpha, RMSE)
+
+alpha[which(RMSE==min(RMSE))]
+
 #Matrix Factorization
 train_small <- movielens %>% 
   group_by(movieId) %>%
@@ -277,12 +286,156 @@ movie_titles <- movielens %>%
 
 colnames(y) <- with(movie_titles, title[match(colnames(y), movieId)]) 
 
+y <- sweep(y, 1, rowMeans(y, na.rm=TRUE))
+y <- sweep(y, 2, colMeans(y, na.rm=TRUE))
+
+#PCA
+y[is.na(y)] <- 0
+y <- sweep(y, 1, rowMeans(y))
+pca <- prcomp(y)
+
+dim(pca$rotation)
+
+dim(pca$x)
+
+plot(pca$sdev)
+
+var_explained <- cumsum(pca$sdev^2/sum(pca$sdev^2))
+plot(var_explained)
+
+library(ggrepel)
+pcs <- data.frame(pca$rotation, name = colnames(y))
+pcs %>%  ggplot(aes(PC1, PC2)) + geom_point() + 
+  geom_text_repel(aes(PC1, PC2, label=name),
+                  data = filter(pcs, 
+                                PC1 < -0.1 | PC1 > 0.1 | PC2 < -0.075 | PC2 > 0.1))
+
+pcs %>% select(name, PC1) %>% arrange(PC1) %>% slice(1:10)
+
+pcs %>% select(name, PC1) %>% arrange(desc(PC1)) %>% slice(1:10)
+
+pcs %>% select(name, PC2) %>% arrange(PC2) %>% slice(1:10)
+
+pcs %>% select(name, PC2) %>% arrange(desc(PC2)) %>% slice(1:10)
+
+#Student Performance:
+#simulate the dataset
+set.seed(1987, sample.kind="Rounding")
+#if using R 3.6 or later, use `set.seed(1987, sample.kind="Rounding")` instead
+n <- 100
+k <- 8
+Sigma <- 64  * matrix(c(1, .75, .5, .75, 1, .5, .5, .5, 1), 3, 3) 
+m <- MASS::mvrnorm(n, rep(0, 3), Sigma)
+m <- m[order(rowMeans(m), decreasing = TRUE),]
+y <- m %x% matrix(rep(1, k), nrow = 1) + matrix(rnorm(matrix(n*k*3)), n, k*3)
+colnames(y) <- c(paste(rep("Math",k), 1:k, sep="_"),
+                 paste(rep("Science",k), 1:k, sep="_"),
+                 paste(rep("Arts",k), 1:k, sep="_"))
+head(y)
+#Q1
+my_image <- function(x, zlim = range(x), ...){
+  colors = rev(RColorBrewer::brewer.pal(9, "RdBu"))
+  cols <- 1:ncol(x)
+  rows <- 1:nrow(x)
+  image(cols, rows, t(x[rev(rows),,drop=FALSE]), xaxt = "n", yaxt = "n",
+        xlab="", ylab="",  col = colors, zlim = zlim, ...)
+  abline(h=rows + 0.5, v = cols + 0.5)
+  axis(side = 1, cols, colnames(x), las = 2)
 }
 
-length(RMSE)
-length(alpha)
+my_image(y)
 
-plot(alpha, RMSE)
+#Q2
+my_image(cor(y), zlim = c(-1,1))
+range(cor(y))
+axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
 
-alpha[which(RMSE==min(RMSE))]
+#Q3
+s <- svd(y)
+names(s)
+
+y_svd <- s$u %*% diag(s$d) %*% t(s$v)
+max(abs(y - y_svd))
+
+ss_y <- apply(y^2, 2, sum)
+ss_yv <- apply((y%*%s$v)^2, 2, sum)
+sum(ss_y)
+sum(ss_yv)
+
+#Q4
+length(ss_y)
+plot(ss_y)
+plot(ss_yv)
+
+#Q5
+sqrt_yv <- sqrt(ss_yv)
+sqrt_yv
+
+plot(s$d, sqrt_yv)
+
+#Q6
+sum(s$d[1:3]^2)/sum(s$d^2)
+
+#Q7
+identical(s$u %*% diag(s$d), sweep(s$u, 2, s$d, FUN = "*"))
+
+#Q8
+
+student_avg <- rowMeans(y, na.rm=TRUE)
+UD <- sweep(s$u, 2, s$d, FUN = "*")
+
+plot(student_avg,UD[,1])
+
+#Q9
+
+my_image(s$v)
+
+#Q10
+plot(s$u[,1], ylim = c(-0.3,0.3))
+plot((s$v)[,1], ylim = c(-0.3,0.3))
+
+dim(diag(s$d))
+
+U1d11tV1 <- (s$u[,1,drop=FALSE]*s$d[1]) %*% t(s$v[, 1, drop=FALSE])
+
+
+my_image(U1d11tV1)
+my_image(y)
+
+#Q11
+resid <- y - with(s,(u[, 1, drop=FALSE]*d[1]) %*% t(v[, 1, drop=FALSE]))
+my_image(cor(resid), zlim = c(-1,1))
+axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
+
+plot(s$u[,2], ylim = c(-0.3,0.3))
+plot((s$v)[,2], ylim = c(-0.3,0.3))
+
+U2d22tV2 <- (s$u[,2,drop=FALSE]*s$d[2]) %*% t(s$v[, 2, drop=FALSE])
+
+my_image(U2d22tV2)
+my_image(resid)
+
+#Q12
+resid <- y - with(s,sweep(u[, 1:2], 2, d[1:2], FUN="*") %*% t(v[, 1:2]))
+my_image(cor(resid), zlim = c(-1,1))
+axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
+
+plot(s$u[,3], ylim = c(-0.3,0.3))
+plot((s$v)[,3], ylim = c(-0.3,0.3))
+
+U3d33tV3 <- (s$u[,3,drop=FALSE]*s$d[3]) %*% t(s$v[, 3, drop=FALSE])
+
+my_image(U3d33tV3)
+my_image(resid)
+
+#Q13
+resid <- y - with(s,sweep(u[, 1:3], 2, d[1:3], FUN="*") %*% t(v[, 1:3]))
+my_image(cor(resid), zlim = c(-1,1))
+axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
+
+#Q14
+three_cols <- U1d11tV1+U2d22tV2+U3d33tV3
+my_image(y, zlim = range(y))
+my_image(three_cols, zlim = range(y))
+my_image(resid, zlim = range(y))
 
