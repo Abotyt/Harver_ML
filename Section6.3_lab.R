@@ -333,6 +333,7 @@ colnames(y) <- c(paste(rep("Math",k), 1:k, sep="_"),
                  paste(rep("Arts",k), 1:k, sep="_"))
 head(y)
 #Q1
+#Visualise the 24 test scores for 100 students
 my_image <- function(x, zlim = range(x), ...){
   colors = rev(RColorBrewer::brewer.pal(9, "RdBu"))
   cols <- 1:ncol(x)
@@ -346,51 +347,64 @@ my_image <- function(x, zlim = range(x), ...){
 my_image(y)
 
 #Q2
+#use function created in Q1 to visualise the correlation 
 my_image(cor(y), zlim = c(-1,1))
 range(cor(y))
 axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
 
 #Q3
+#compute svd and comfirm that sum of squares of columns of Y is equal to sum of squares of columns of transformed YV
+#compute
 s <- svd(y)
 names(s)
-
+#check svd
 y_svd <- s$u %*% diag(s$d) %*% t(s$v)
 max(abs(y - y_svd))
 
+#compute and check if Y and transfromed YV are equal
 ss_y <- apply(y^2, 2, sum)
 ss_yv <- apply((y%*%s$v)^2, 2, sum)
 sum(ss_y)
 sum(ss_yv)
 
 #Q4
+#plot Y against column number, and plot YV the same way
 length(ss_y)
+#observe that YV decrease to almost 0 and stay steady after 4th column 
 plot(ss_y)
 plot(ss_yv)
 
 #Q5
+#prove that sum of square of the columns fo UD are diagonal entries of d through gragh
 sqrt_yv <- sqrt(ss_yv)
 sqrt_yv
 
 plot(s$d, sqrt_yv)
 
 #Q6
+#total variablility of first three columns of YV
 sum(s$d[1:3]^2)/sum(s$d^2)
 
 #Q7
+#compute UD
 identical(s$u %*% diag(s$d), sweep(s$u, 2, s$d, FUN = "*"))
 
 #Q8
-
+#compute student avg and find the first column of UD, "U1d1,1"
 student_avg <- rowMeans(y, na.rm=TRUE)
 UD <- sweep(s$u, 2, s$d, FUN = "*")
-
+#plot the the results
+#linear relationships
 plot(student_avg,UD[,1])
 
 #Q9
-
+#plot sv and observe the column one
+#column one close to constant
+#YV is sum of rows of Y times constant(V)
 my_image(s$v)
 
 #Q10
+#plot U1d11tV1
 plot(s$u[,1], ylim = c(-0.3,0.3))
 plot((s$v)[,1], ylim = c(-0.3,0.3))
 
@@ -403,6 +417,7 @@ my_image(U1d11tV1)
 my_image(y)
 
 #Q11
+#find residual of d11u1tV1 and plot the correlations
 resid <- y - with(s,(u[, 1, drop=FALSE]*d[1]) %*% t(v[, 1, drop=FALSE]))
 my_image(cor(resid), zlim = c(-1,1))
 axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
@@ -416,6 +431,7 @@ my_image(U2d22tV2)
 my_image(resid)
 
 #Q12
+#find residual of d22u2tV2 and plot the correlations
 resid <- y - with(s,sweep(u[, 1:2], 2, d[1:2], FUN="*") %*% t(v[, 1:2]))
 my_image(cor(resid), zlim = c(-1,1))
 axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
@@ -429,11 +445,11 @@ my_image(U3d33tV3)
 my_image(resid)
 
 #Q13
+#find residual of d33u3tV3 and plot the correlations
 resid <- y - with(s,sweep(u[, 1:3], 2, d[1:3], FUN="*") %*% t(v[, 1:3]))
 my_image(cor(resid), zlim = c(-1,1))
 axis(side = 2, 1:ncol(y), rev(colnames(y)), las = 2)
 
-#Q14
 three_cols <- U1d11tV1+U2d22tV2+U3d33tV3
 my_image(y, zlim = range(y))
 my_image(three_cols, zlim = range(y))
