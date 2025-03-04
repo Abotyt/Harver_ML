@@ -276,6 +276,7 @@ y <- train_small %>%
   dplyr::select(userId, movieId, rating) %>%
   pivot_wider(names_from = "movieId", values_from = "rating") %>%
   as.matrix()
+y
 
 rownames(y)<- y[,1]
 y <- y[,-1]
@@ -293,6 +294,7 @@ y <- sweep(y, 2, colMeans(y, na.rm=TRUE))
 y[is.na(y)] <- 0
 y <- sweep(y, 1, rowMeans(y))
 pca <- prcomp(y)
+pca
 
 dim(pca$rotation)
 
