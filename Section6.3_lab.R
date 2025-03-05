@@ -302,11 +302,11 @@ dim(pca$x)
 
 plot(pca$sdev)
 
-var_explained <- cumsum(pca$sdev^2/sum(pca$sdev^2))
+var_explained <- cumsum(pca$sdev^2/sum(pca$sdev)^2)
 plot(var_explained)
 
 library(ggrepel)
-pcs <- data.frame(pca$rotation, name = colnames(y))
+pcs <- data.frame(pca$rotation)
 pcs %>%  ggplot(aes(PC1, PC2)) + geom_point() + 
   geom_text_repel(aes(PC1, PC2, label=name),
                   data = filter(pcs, 
