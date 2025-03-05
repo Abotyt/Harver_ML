@@ -109,8 +109,8 @@ library(gam)
 set.seed(5)
 fit_gamLoess <- train(target~. ,method='gamLoess', family=binomial, data=training)
 pd_gamLoess <- predict(fit_gamLoess, test_x)
-accuracy_logistic <- mean(pd_gamLoess==test_y)
-accuracy_logistic
+accuracy_gamLoess <- mean(pd_gamLoess==test_y)
+accuracy_gamLoess
 
 #KNN model
 
@@ -145,11 +145,13 @@ votes <- rowMeans(results=='B')
 pd_ensemble <- ifelse(votes>0.5, 'B', 'M') 
 accruacy_ensemble <- mean(pd_ensemble==test_y)
 accruacy_ensemble
-
+#compare the accuracy
 models <- c("Logistic regression", "Loess", "K nearest neighbors", "Random forest", "Ensemble")
-accuracy <- c(mean(glm_preds == test_y),
-              mean(loess_preds == test_y),
-              mean(knn_preds == test_y),
-              mean(rf_preds == test_y),
-              mean(ensemble_preds == test_y))
+accuracy <- c(accuracy_logistic,
+              accuracy_gamLoess,
+              accruacy_KNN,
+              accruacy_rf,
+              accruacy_ensemble)
 data.frame(Model = models, Accuracy = accuracy)
+
+#Ensemble has the highest accuracy
