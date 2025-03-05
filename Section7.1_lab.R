@@ -87,8 +87,69 @@ test_x <- scaled_x[test_index,]
 test_y <- brca$y[test_index]
 train_x <- scaled_x[-test_index,]
 train_y <- brca$y[-test_index]
-
 #proportion of category targets
 mean(train_y=='B')
 mean(test_y=='B')
 
+#Logistic regression
+set.seed(1)
+
+training <- data.frame(train_x, target=train_y)
+#training <- as.matrix(training)
+
+fit_logistic <- train(target~. ,method='glm', family=binomial, data=training)
+pd_logistic <- predict(fit_logistic, test_x)
+
+accuracy_logistic <- mean(pd_logistic==test_y)
+accuracy_logistic
+
+#Loess model
+
+library(gam)
+set.seed(5)
+fit_gamLoess <- train(target~. ,method='gamLoess', family=binomial, data=training)
+pd_gamLoess <- predict(fit_gamLoess, test_x)
+accuracy_logistic <- mean(pd_gamLoess==test_y)
+accuracy_logistic
+
+#KNN model
+
+set.seed(7)
+tune_ks <- data.frame(k=seq(3,21,2))
+fit_KNN <- train(target~., method='knn', tuneGrid=tune_ks, data=training)
+fit_KNN$bestTune
+
+pd_KNN <- predict(fit_KNN, test_x)
+accruacy_KNN <- mean(pd_KNN==test_y)
+accruacy_KNN
+
+#Random forest
+set.seed(9)
+tune_mtrys <- data.frame(mtry=c(3, 5, 7, 9))
+fit_rf <- train(target~., method='rf', tuneGrid=tune_mtrys, data=training)
+fit_rf$bestTune
+
+pd_rf <- predict(fit_rf, test_x)
+accruacy_rf <- mean(pd_rf==test_y)
+accruacy_rf
+
+imp <- varImp(fit_rf)
+imp
+#Ensemble
+results <- data.frame(pd_logistic=pd_logistic, 
+                      pd_gamLoess=pd_gamLoess, 
+                      pd_KNN=pd_KNN,
+                      pd_rf=pd_rf
+                      )
+votes <- rowMeans(results=='B')
+pd_ensemble <- ifelse(votes>0.5, 'B', 'M') 
+accruacy_ensemble <- mean(pd_ensemble==test_y)
+accruacy_ensemble
+
+models <- c("Logistic regression", "Loess", "K nearest neighbors", "Random forest", "Ensemble")
+accuracy <- c(mean(glm_preds == test_y),
+              mean(loess_preds == test_y),
+              mean(knn_preds == test_y),
+              mean(rf_preds == test_y),
+              mean(ensemble_preds == test_y))
+data.frame(Model = models, Accuracy = accuracy)
