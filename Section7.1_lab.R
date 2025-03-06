@@ -40,7 +40,7 @@ pca <- prcomp(scaled_x)
 
 plot(pca$sdev)
 
-var_explained <- cumsum(pca$sdev^2/sum(pca$sdev)^2)
+var_explained <- cumsum((pca$sdev)^2/sum((pca$sdev)^2))
 var_explained
 
 var_explained[1]/var_explained[length(var_explained)]
@@ -155,3 +155,4 @@ accuracy <- c(accuracy_logistic,
 data.frame(Model = models, Accuracy = accuracy)
 
 #Ensemble has the highest accuracy
+
